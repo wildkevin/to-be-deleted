@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Compiled/optimized artifacts
+*.so
+
+# Packages/metadata
+*.egg-info/
+*.eggs/
+dist/
+build/
+pip-wheel-metadata/
+wheelhouse/
+
+# Unit test / coverage / tooling
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+.tox/
+.nox/
+.cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment variables / secrets
+.env
+*.env
+
+# Logs
+*.log
+
+# Framework-specific (safe defaults)
+*.sqlite3
+db.sqlite3
+
+# Local-only tooling/config artifacts
+.tmp
+.claude/
+*.db
