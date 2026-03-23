@@ -1,11 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { createAgent } from '../../api/agents';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { createAgent, getAgent } from '../../api/agents';
 import { getMarketplaceItems } from '../../api/marketplace';
 
 export default function AgentBuilder() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const agentId = searchParams.get('id');
+  const isEditing = !!agentId;
+
+  const { data: agent } = useQuery({
+    queryKey: ['agent', agentId],
+    queryFn: () => getAgent(agentId!),
+    enabled: isEditing,
+  });
+
   const { data: mcps } = useQuery({
     queryKey: ['marketplace', 'mcp'],
     queryFn: () => getMarketplaceItems('mcp'),
@@ -19,11 +29,24 @@ export default function AgentBuilder() {
   const [form, setForm] = useState({
     name: '',
     description: '',
-    model: 'gpt-4',
+    model: 'gpt-4o',
     system_prompt: '',
     selectedMCPIds: [] as string[],
     selectedSkillIds: [] as string[],
   });
+
+  useEffect(() => {
+    if (agent) {
+      setForm({
+        name: agent.name,
+        description: agent.description,
+        model: agent.model,
+        system_prompt: agent.system_prompt,
+        selectedMCPIds: agent.mcp_tools?.map((t: any) => t.id) || [],
+        selectedSkillIds: agent.skills?.map((s: any) => s.id) || [],
+      });
+    }
+  }, [agent]);
 
   const toggleMCP = (id: string) => {
     setForm(f => ({
@@ -53,6 +76,11 @@ export default function AgentBuilder() {
         ?.filter((s: any) => form.selectedSkillIds.includes(s.id))
         .map((s: any) => ({ id: s.id, name: s.name, item_type: s.item_type })) || [];
 
+      if (isEditing) {
+        // TODO: Implement updateAgent API
+        console.warn('Update not implemented yet');
+      }
+
       return createAgent({
         ...form,
         mcp_tools: mcpTools,
@@ -64,7 +92,7 @@ export default function AgentBuilder() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-xl font-bold mb-6">New Agent</h1>
+      <h1 className="text-xl font-bold mb-6">{isEditing ? 'Edit Agent' : 'New Agent'}</h1>
 
       <div className="space-y-4">
         <div>
@@ -92,7 +120,9 @@ export default function AgentBuilder() {
             value={form.model}
             onChange={e => setForm(f => ({ ...f, model: e.target.value }))}
           >
+            <option value="gpt-4o">GPT-4o</option>
             <option value="gpt-4">GPT-4</option>
+            <option value="gpt-4-turbo">GPT-4 Turbo</option>
             <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
           </select>
         </div>

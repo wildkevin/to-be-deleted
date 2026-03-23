@@ -25,7 +25,7 @@ export const getConversations = (agentId?: string, teamId?: string) =>
 export const getConversation = (id: string) =>
   client.get<Conversation>(`/conversations/${id}`).then(r => r.data);
 
-export const createConversation = (data: { agent_id?: string; team_id?: string; title?: string }) =>
+export const createConversation = (data: { target_type: string; target_id: string; title?: string }) =>
   client.post<Conversation>('/conversations', data).then(r => r.data);
 
 export interface SSEEvent {
@@ -39,7 +39,7 @@ export const streamChat = (
   onEvent: (event: SSEEvent) => void
 ): (() => void) => {
   const eventSource = new EventSource(
-    `/api/conversations/${conversationId}/chat?message=${encodeURIComponent(message)}`
+    `/api/conversations/${conversationId}/chat?message=${encodeURIComponent(message)}&user=alice`
   );
 
   eventSource.addEventListener('token', (e: MessageEvent) => {

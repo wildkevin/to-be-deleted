@@ -8,9 +8,10 @@ interface ItemCardProps {
   model?: string;
   mode?: string;
   status?: string;
+  onEdit?: () => void;
 }
 
-export default function ItemCard({ type, id, name, description, model, mode, status }: ItemCardProps) {
+export default function ItemCard({ type, id, name, description, model, mode, status, onEdit }: ItemCardProps) {
   const typeColors = {
     agent: 'bg-blue-100 text-blue-700 border-blue-300',
     team: 'bg-purple-100 text-purple-700 border-purple-300',
@@ -27,6 +28,16 @@ export default function ItemCard({ type, id, name, description, model, mode, sta
   const getLink = () => {
     if (type === 'agent' || type === 'team') {
       return `/playground/${type}/${id}`;
+    }
+    return '#';
+  };
+
+  const getEditLink = () => {
+    if (type === 'agent') {
+      return `/builder/agent?id=${id}`;
+    }
+    if (type === 'team') {
+      return `/builder/team?id=${id}`;
     }
     return '#';
   };
@@ -50,11 +61,18 @@ export default function ItemCard({ type, id, name, description, model, mode, sta
           {model && <span>{model}</span>}
           {mode && <span>• {mode}</span>}
         </div>
-        {type !== 'mcp' && type !== 'skill' && (
-          <Link to={getLink()} className="text-blue-600 hover:text-blue-700 font-medium">
-            Open →
-          </Link>
-        )}
+        <div className="flex gap-3">
+          {(type === 'agent' || type === 'team') && (
+            <Link to={getEditLink()} className="text-gray-600 hover:text-gray-800 font-medium">
+              Edit
+            </Link>
+          )}
+          {type !== 'mcp' && type !== 'skill' && (
+            <Link to={getLink()} className="text-blue-600 hover:text-blue-700 font-medium">
+              Open →
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -23,7 +23,7 @@ async def run_agent_stream(
         tools = []
 
         # MCP tools
-        for mcp in agent_db.mcp_tools:
+        for mcp in agent_db.mcp_tools or []:
             tools.append(
                 MCPStreamableHTTPTool(
                     name=mcp.name,
@@ -33,7 +33,7 @@ async def run_agent_stream(
             )
 
         # Skills as AI functions
-        for skill in agent_db.skills:
+        for skill in agent_db.skills or []:
             async def _invoke(skill_item=skill, **kwargs):
                 return await run_skill(
                     skill_item.file_path,
@@ -58,35 +58,56 @@ async def run_agent_stream(
 
         # Convert to Message format
         from agent_framework import Message
-        messages = [Message(role=Role.USER, content=full_message)]
+        messages = [Message(role="user", contents=full_message)]
+
+        # Create a client wrapper using OpenAIChatClient with Azure OpenAI backend
+        from openai import AsyncAzureOpenAI
+        from agent_framework.openai import OpenAIChatClient
+        # For Azure OpenAI, pass model as a parameter when calling
+        azure_client = AsyncAzureOpenAI(
+            azure_endpoint=settings.azure_openai_endpoint,
+            api_key=settings.azure_openai_api_key,
+            api_version=settings.azure_openai_api_version,
+        )
+        client = OpenAIChatClient(
+            model_id=agent_db.model,
+            async_client=azure_client,
+        )
+        # Override the model parameter for Azure to pass as 'model' in API call
+        client._model = agent_db.model
 
         agent = Agent(
             name=agent_db.name,
             instructions=agent_db.system_prompt,
             tools=tools if tools else None,
+            client=client,
         )
 
         context = AgentContext(
             agent=agent,
             messages=messages,
-            client_kwargs={
-                "endpoint": settings.azure_openai_endpoint,
-                "api_key": settings.azure_openai_api_key,
-                "api_version": settings.azure_openai_api_version,
-                "deployment_name": agent_db.model,
-            },
         )
 
         # Stream response
         response = await agent.run(full_message, context=context)
         # Emit content as tokens
-        if hasattr(response, "content"):
-            for chunk in _chunk_text(response.content):
+        content_text = ""
+        if response:
+            if hasattr(response, "content"):
+                content_text = response.content or ""
+            elif isinstance(response, str):
+                content_text = response
+            else:
+                content_text = str(response)
+
+        if content_text:
+            for chunk in _chunk_text(content_text):
                 yield _sse("token", {"text": chunk})
         yield _sse("step_end", {"step": 1, "agent_name": agent_db.name})
 
     except Exception as e:
-        yield _sse("error", {"code": "azure_error", "message": str(e)})
+        import traceback
+        yield _sse("error", {"code": "azure_error", "message": str(e), "traceback": traceback.format_exc()})
         return
 
     yield _sse("done", {"message_id": ""})

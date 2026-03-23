@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from backend.api.deps import get_db, get_current_user
+from backend.api.deps import get_db, get_current_user, get_current_user_from_query
 from backend.models.conversation import Conversation, Message, Attachment
 from backend.models.user import User
 
@@ -193,7 +193,33 @@ async def chat(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Conversation).where(Conversation.id == conv_id))
+    return await _chat_impl(conv_id, body.message, body.attachment_ids, request, db, user)
+
+
+@router.get("/{conv_id}/chat")
+async def chat_get(
+    conv_id: str,
+    message: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user_from_query),
+):
+    return await _chat_impl(conv_id, message, [], request, db, user)
+
+
+async def _chat_impl(
+    conv_id: str,
+    message: str,
+    attachment_ids: list[str],
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Conversation)
+        .options(selectinload(Conversation.messages))
+        .where(Conversation.id == conv_id)
+    )
     conv = result.scalar_one_or_none()
     if not conv:
         raise HTTPException(status_code=404)
@@ -203,9 +229,9 @@ async def chat(
 
     # Fetch attachments
     attachments = []
-    if body.attachment_ids:
+    if attachment_ids:
         att_result = await db.execute(
-            select(Attachment).where(Attachment.id.in_(body.attachment_ids))
+            select(Attachment).where(Attachment.id.in_(attachment_ids))
         )
         attachments = att_result.scalars().all()
 
@@ -218,7 +244,7 @@ async def chat(
         agent_db = agent_result.scalar_one_or_none()
         if not agent_db:
             raise HTTPException(status_code=404, detail="Agent not found")
-        stream = run_agent_stream(agent_db, body.message, history, attachments)
+        stream = run_agent_stream(agent_db, message, history, attachments)
     else:
         from backend.models.team import Team
         from backend.core.team_runner import run_team_stream
@@ -227,11 +253,11 @@ async def chat(
         team_db = team_result.scalar_one_or_none()
         if not team_db:
             raise HTTPException(status_code=404, detail="Team not found")
-        stream = run_team_stream(team_db, body.message, history, attachments)
+        stream = run_team_stream(team_db, message, history, attachments)
 
     # Save user message
     user_msg = Message(
-        conversation_id=conv_id, role="user", content={"text": body.message}
+        conversation_id=conv_id, role="user", content={"text": message}
     )
     db.add(user_msg)
     await db.commit()

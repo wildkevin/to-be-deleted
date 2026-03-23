@@ -22,7 +22,8 @@ export default function Playground() {
     const initConversation = async () => {
       try {
         const conv = await createConversation({
-          [type === 'team' ? 'team_id' : 'agent_id']: id,
+          target_type: type || 'agent',
+          target_id: id || '',
           title: `${agentOrTeam.name} - ${new Date().toLocaleDateString()}`,
         });
         setConversationId(conv.id);

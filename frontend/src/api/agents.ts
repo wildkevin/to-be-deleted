@@ -22,6 +22,9 @@ export interface AgentsResponse {
 export const getAgents = (page = 1) =>
   client.get<AgentsResponse>('/agents', { params: { page, limit: 20 } }).then(r => r.data);
 
+export const getAgent = (id: string) =>
+  client.get<Agent>(`/agents/${id}`).then(r => r.data);
+
 export const createAgent = (data: Partial<Agent>) =>
   client.post<Agent>('/agents', data).then(r => r.data);
 

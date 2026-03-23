@@ -1,4 +1,4 @@
-from fastapi import Header, HTTPException, Depends
+from fastapi import Header, HTTPException, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from backend.database import get_db
@@ -17,6 +17,20 @@ async def get_current_user(
         # Spec: unknown users must 401 (no auto-create).
         raise HTTPException(status_code=401, detail="Unknown user")
     return user
+
+
+async def get_current_user_from_query(
+    user: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Alternative auth for SSE endpoints that don't support custom headers."""
+    if not user:
+        raise HTTPException(status_code=401, detail="User query parameter required")
+    result = await db.execute(select(User).where(User.username == user))
+    found = result.scalar_one_or_none()
+    if not found:
+        raise HTTPException(status_code=401, detail="Unknown user")
+    return found
 
 
 async def get_admin_user(user: User = Depends(get_current_user)) -> User:

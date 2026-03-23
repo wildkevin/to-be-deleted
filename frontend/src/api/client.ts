@@ -10,8 +10,8 @@ const client = axios.create({
 // Add X-CCM-User header for all requests
 client.interceptors.request.use((config) => {
   // In a real app, this would come from authentication
-  // For now, we use a default user
-  config.headers['X-CCM-User'] = 'default-user';
+  // For now, we use 'alice' as the default user
+  config.headers['X-CCM-User'] = 'alice';
   return config;
 });
 
