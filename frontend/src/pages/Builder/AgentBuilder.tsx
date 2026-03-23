@@ -1,14 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { createAgent, getAgents } from '../../api/agents';
+import { createAgent } from '../../api/agents';
 import { getMarketplaceItems } from '../../api/marketplace';
-
-interface MarketplaceItemRef {
-  id: string;
-  name: string;
-  item_type: 'mcp' | 'skill';
-}
 
 export default function AgentBuilder() {
   const navigate = useNavigate();
@@ -17,7 +11,7 @@ export default function AgentBuilder() {
     queryFn: () => getMarketplaceItems('mcp'),
   });
 
-  const { data: skills } = useQuery({
+  const { data: skillItems } = useQuery({
     queryKey: ['marketplace', 'skill'],
     queryFn: () => getMarketplaceItems('skill'),
   });
@@ -52,17 +46,17 @@ export default function AgentBuilder() {
   const save = useMutation({
     mutationFn: async () => {
       const mcpTools = mcps?.items
-        ?.filter(m => form.selectedMCPIds.includes(m.id))
-        .map(m => ({ id: m.id, name: m.name, item_type: m.item_type })) || [];
+        ?.filter((m: any) => form.selectedMCPIds.includes(m.id))
+        .map((m: any) => ({ id: m.id, name: m.name, item_type: m.item_type })) || [];
 
-      const skills = skills?.items
-        ?.filter(s => form.selectedSkillIds.includes(s.id))
-        .map(s => ({ id: s.id, name: s.name, item_type: s.item_type })) || [];
+      const skillTools = skillItems?.items
+        ?.filter((s: any) => form.selectedSkillIds.includes(s.id))
+        .map((s: any) => ({ id: s.id, name: s.name, item_type: s.item_type })) || [];
 
       return createAgent({
         ...form,
         mcp_tools: mcpTools,
-        skills,
+        skills: skillTools,
       });
     },
     onSuccess: () => navigate('/'),
@@ -142,7 +136,7 @@ export default function AgentBuilder() {
             Skills {form.selectedSkillIds.length > 0 && `(${form.selectedSkillIds.length} selected)`}
           </label>
           <div className="space-y-1 max-h-48 overflow-y-auto border rounded p-2">
-            {skills?.items?.map(s => (
+            {skillItems?.items?.map((s: any) => (
               <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer p-1 hover:bg-gray-50 rounded">
                 <input
                   type="checkbox"
@@ -155,7 +149,7 @@ export default function AgentBuilder() {
                 )}
               </label>
             ))}
-            {!skills?.items?.length && (
+            {!skillItems?.items?.length && (
               <div className="text-sm text-gray-500">No skills available</div>
             )}
           </div>

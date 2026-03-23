@@ -13,25 +13,17 @@ async def run_agent_stream(
     history: list[dict],
     attachments: list,
 ) -> AsyncGenerator[dict, None]:
-    from agent_framework import ChatAgent
-    from agent_framework.clients.azure import AzureOpenAIChatClient
+    from agent_framework import Agent, AgentContext
+    from agent_framework import MCPStreamableHTTPTool, FunctionTool
+    from agent_framework import Role
 
     yield _sse("step_start", {"step": 1, "agent_name": agent_db.name})
 
     try:
-        client = AzureOpenAIChatClient(
-            endpoint=settings.azure_openai_endpoint,
-            api_key=settings.azure_openai_api_key,
-            api_version=settings.azure_openai_api_version,
-            deployment_name=agent_db.model,
-        )
-
         tools = []
 
         # MCP tools
         for mcp in agent_db.mcp_tools:
-            from agent_framework import MCPStreamableHTTPTool
-
             tools.append(
                 MCPStreamableHTTPTool(
                     name=mcp.name,
@@ -42,8 +34,6 @@ async def run_agent_stream(
 
         # Skills as AI functions
         for skill in agent_db.skills:
-            from agent_framework.functions import AIFunction
-
             async def _invoke(skill_item=skill, **kwargs):
                 return await run_skill(
                     skill_item.file_path,
@@ -51,7 +41,7 @@ async def run_agent_stream(
                     kwargs,
                 )
 
-            fn = AIFunction(
+            fn = FunctionTool(
                 name=skill.name,
                 description=skill.description,
                 fn=_invoke,
@@ -66,20 +56,34 @@ async def run_agent_stream(
 
         full_message = f"{file_context}\n{message}".strip() if file_context else message
 
-        chat_agent = ChatAgent(
-            chat_client=client,
+        # Convert to Message format
+        from agent_framework import Message
+        messages = [Message(role=Role.USER, content=full_message)]
+
+        agent = Agent(
+            name=agent_db.name,
             instructions=agent_db.system_prompt,
             tools=tools if tools else None,
         )
 
+        context = AgentContext(
+            agent=agent,
+            messages=messages,
+            client_kwargs={
+                "endpoint": settings.azure_openai_endpoint,
+                "api_key": settings.azure_openai_api_key,
+                "api_version": settings.azure_openai_api_version,
+                "deployment_name": agent_db.model,
+            },
+        )
+
         # Stream response
-        async with chat_agent:
-            response = await chat_agent.run(full_message)
-            # Emit content as tokens
-            if hasattr(response, "content"):
-                for chunk in _chunk_text(response.content):
-                    yield _sse("token", {"text": chunk})
-            yield _sse("step_end", {"step": 1, "agent_name": agent_db.name})
+        response = await agent.run(full_message, context=context)
+        # Emit content as tokens
+        if hasattr(response, "content"):
+            for chunk in _chunk_text(response.content):
+                yield _sse("token", {"text": chunk})
+        yield _sse("step_end", {"step": 1, "agent_name": agent_db.name})
 
     except Exception as e:
         yield _sse("error", {"code": "azure_error", "message": str(e)})

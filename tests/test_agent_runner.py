@@ -15,19 +15,20 @@ async def test_agent_runner_streams_tokens():
     mock_agent_db.skills = []
 
     events = []
-    with patch("backend.core.agent_runner.ChatAgent") as MockChatAgent, \
-         patch("backend.core.agent_runner.AzureOpenAIChatClient"):
+    with patch("agent_framework.Agent") as MockAgent, \
+         patch("agent_framework.AgentContext"), \
+         patch("agent_framework.Message"), \
+         patch("agent_framework.Role"):
         mock_instance = AsyncMock()
         mock_response = MagicMock()
         mock_response.content = "Hello!"
         mock_instance.run = AsyncMock(return_value=mock_response)
-        mock_instance.__aenter__ = AsyncMock(return_value=mock_instance)
-        mock_instance.__aexit__ = AsyncMock(return_value=None)
-        MockChatAgent.return_value = mock_instance
+        MockAgent.return_value = mock_instance
 
         async for event in run_agent_stream(mock_agent_db, "Hi", [], []):
             events.append(event)
 
     event_types = [e["event"] for e in events]
     assert "step_start" in event_types
+    assert "step_end" in event_types
     assert "done" in event_types

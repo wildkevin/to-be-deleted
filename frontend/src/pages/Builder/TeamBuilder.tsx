@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { getAgents, createTeam } from '../../api/agents';
-import { createTeam as createTeamAPI } from '../../api/teams';
+import { getAgents } from '../../api/agents';
+import { createTeam } from '../../api/teams';
 
 type Mode = 'sequential' | 'orchestrator' | 'loop';
 
@@ -36,9 +36,9 @@ export default function TeamBuilder() {
 
   const save = useMutation({
     mutationFn: async () => {
-      return createTeamAPI({
+      return createTeam({
         ...form,
-        agents: selectedAgents.map((a, i) => ({
+        agents: selectedAgents.map((a: any, i: number) => ({
           agent_id: a.id,
           position: i + 1,
         })),
