@@ -246,10 +246,14 @@ async def _chat_impl(
             raise HTTPException(status_code=404, detail="Agent not found")
         stream = run_agent_stream(agent_db, message, history, attachments)
     else:
-        from backend.models.team import Team
+        from backend.models.team import Team, TeamAgent
         from backend.core.team_runner import run_team_stream
 
-        team_result = await db.execute(select(Team).where(Team.id == conv.target_id))
+        team_result = await db.execute(
+            select(Team)
+            .options(selectinload(Team.agents).joinedload(TeamAgent.agent))
+            .where(Team.id == conv.target_id)
+        )
         team_db = team_result.scalar_one_or_none()
         if not team_db:
             raise HTTPException(status_code=404, detail="Team not found")

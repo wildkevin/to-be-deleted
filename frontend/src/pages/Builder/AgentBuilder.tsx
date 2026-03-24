@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { createAgent, getAgent } from '../../api/agents';
+import { createAgent, getAgent, updateAgent } from '../../api/agents';
 import { getMarketplaceItems } from '../../api/marketplace';
 
 export default function AgentBuilder() {
@@ -76,16 +76,17 @@ export default function AgentBuilder() {
         ?.filter((s: any) => form.selectedSkillIds.includes(s.id))
         .map((s: any) => ({ id: s.id, name: s.name, item_type: s.item_type })) || [];
 
-      if (isEditing) {
-        // TODO: Implement updateAgent API
-        console.warn('Update not implemented yet');
-      }
-
-      return createAgent({
+      const agentData = {
         ...form,
         mcp_tools: mcpTools,
         skills: skillTools,
-      });
+      };
+
+      if (isEditing && agentId) {
+        return updateAgent(agentId, agentData);
+      }
+
+      return createAgent(agentData);
     },
     onSuccess: () => navigate('/'),
   });
