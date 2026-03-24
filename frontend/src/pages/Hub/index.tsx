@@ -44,6 +44,18 @@ export default function Hub() {
             >
               + New Team
             </Link>
+            <Link
+              to="/marketplace"
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm font-medium"
+            >
+              Marketplace
+            </Link>
+            <Link
+              to="/marketplace/admin"
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 text-sm font-medium"
+            >
+              Admin
+            </Link>
           </div>
         </div>
       </nav>

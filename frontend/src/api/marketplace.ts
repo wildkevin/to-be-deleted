@@ -4,23 +4,27 @@ export interface MarketplaceItem {
   id: string;
   name: string;
   description: string;
-  item_type: 'mcp' | 'skill';
+  type: 'mcp' | 'skill';
   config: any;
+  file_path?: string;
   status: 'pending' | 'approved' | 'rejected';
   submitted_by: string;
+  reviewed_by?: string;
+  status_changed_at?: string;
+  discovered_tools?: string[];
   created_at: string;
 }
 
 export const getMarketplaceItems = (type?: 'mcp' | 'skill') =>
-  client.get<{items: MarketplaceItem[]}>('/marketplace', {
+  client.get<{items: MarketplaceItem[], total: number, page: number, limit: number}>('/marketplace', {
     params: type ? { type } : {}
   }).then(r => r.data);
 
-export const submitMCPTool = (data: { name: string; description: string; config: any }) =>
-  client.post<{id: string}>('/marketplace/mcp', data).then(r => r.data);
+export const getPendingItems = () =>
+  client.get<{items: MarketplaceItem[], total: number, page: number, limit: number}>('/marketplace/pending').then(r => r.data);
 
-export const submitSkill = (data: { name: string; description: string; code: string }) =>
-  client.post<{id: string}>('/marketplace/skill', data).then(r => r.data);
+export const submitMarketplaceItem = (formData: FormData) =>
+  client.post<{id: string}>('/marketplace/submit', formData).then(r => r.data);
 
 export const approveItem = (id: string) =>
   client.post(`/marketplace/${id}/approve`).then(r => r.data);
